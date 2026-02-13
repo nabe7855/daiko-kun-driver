@@ -210,6 +210,70 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _showReportDialog() {
+    final TextEditingController reasonController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('通報する'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('不適切な言動やマナー違反がありましたか？事務局で確認いたします。'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                hintText: '通報理由を入力してください（具体的に）',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (reasonController.text.trim().isEmpty) return;
+              Navigator.pop(context);
+              await _submitReport(reasonController.text.trim());
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('通報を送信', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submitReport(String reason) async {
+    try {
+      final response = await http.post(
+        Uri.parse(_getApiUrl('/ride-requests/${widget.rideId}/report')),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'reporter_id': widget.senderId,
+          'reported_user_id': 'unknown',
+          'reporter_role': widget.senderType,
+          'reason': reason,
+        }),
+      );
+
+      if (response.statusCode == 201 && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('通報を送信しました。事務局で確認いたします。')));
+      }
+    } catch (e) {
+      debugPrint('Error reporting user: $e');
+      _showError('通報の送信に失敗しました');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -217,6 +281,16 @@ class _ChatScreenState extends State<ChatScreen> {
         title: const Text('メッセージ'),
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.report_problem_outlined,
+              color: Colors.white,
+            ),
+            tooltip: '通報する',
+            onPressed: _showReportDialog,
+          ),
+        ],
       ),
       body: Column(
         children: [
