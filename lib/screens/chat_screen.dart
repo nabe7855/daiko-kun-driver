@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:html' as html;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -117,45 +116,19 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _pickImage() async {
-    if (kIsWeb) {
-      _pickImageWeb();
-    } else {
-      try {
-        final XFile? image = await picker.pickImage(
-          source: ImageSource.gallery,
-          imageQuality: 70,
-        );
-        if (image != null) {
-          await _uploadAndSendMessage(image.name, await image.readAsBytes());
-        }
-      } catch (e) {
-        _showError('エラーが発生しました: $e');
+    try {
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+      );
+      if (image != null) {
+        await _uploadAndSendMessage(image.name, await image.readAsBytes());
       }
+    } catch (e) {
+      _showError('エラーが発生しました: $e');
     }
   }
 
-  void _pickImageWeb() {
-    debugPrint('_pickImageWeb called');
-    final html.FileUploadInputElement uploadInput =
-        html.FileUploadInputElement();
-    uploadInput.accept = 'image/*';
-    uploadInput.click();
-
-    uploadInput.onChange.listen((e) {
-      debugPrint('File selected');
-      final files = uploadInput.files;
-      if (files!.isNotEmpty) {
-        final file = files[0];
-        debugPrint('File name: ${file.name}, size: ${file.size}');
-        final reader = html.FileReader();
-        reader.readAsArrayBuffer(file);
-        reader.onLoadEnd.listen((e) {
-          debugPrint('File read complete, starting upload');
-          _uploadAndSendMessage(file.name, reader.result as Uint8List);
-        });
-      }
-    });
-  }
 
   void _showError(String msg) {
     if (mounted) {
